@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StockPickGame - S&P 500 Quiz</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Smooth progress bar animation */
+    #timer-bar {
+      transition: width 0.1s linear;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col justify-between font-sans selection:bg-emerald-500 selection:text-white">
+
+  <!-- Header / Navbar -->
+  <header class="p-4 border-b border-slate-800 flex justify-between items-center max-w-md mx-auto w-full">
+    <h1 class="text-xl font-black tracking-wider text-emerald-400">STOCKPICK<span class="text-white">GAME</span></h1>
+    <div class="text-sm font-semibold bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
+      🔥 Streak: <span id="current-streak" class="text-emerald-400">0</span> | Best: <span id="best-streak" class="text-yellow-400">0</span>
+    </div>
+  </header>
+
+  <!-- Main Game Container -->
+  <main class="max-w-md w-full mx-auto p-4 flex-1 flex flex-col justify-center">
+
+    <!-- Screen 1: Mode Selection -->
+    <div id="mode-select-screen" class="space-y-4 text-center">
+      <div class="mb-6">
+        <h2 class="text-2xl font-bold mb-2">Select Game Mode</h2>
+        <p class="text-slate-400 text-sm">5 seconds per round. One mistake & you restart!</p>
+      </div>
+
+      <button onclick="startGame('GUESS_SYMBOL')" class="w-full bg-slate-800 hover:bg-emerald-600/20 hover:border-emerald-500 border border-slate-700 rounded-xl p-5 text-left transition duration-200 group">
+        <div class="text-xs uppercase tracking-wider text-emerald-400 font-bold mb-1">Mode 1</div>
+        <div class="text-lg font-bold group-hover:text-emerald-300">Guess The Stock Symbol</div>
+        <div class="text-xs text-slate-400 mt-1">Given "Microsoft" → Select "MSFT"</div>
+      </button>
+
+      <button onclick="startGame('GUESS_NAME')" class="w-full bg-slate-800 hover:bg-emerald-600/20 hover:border-emerald-500 border border-slate-700 rounded-xl p-5 text-left transition duration-200 group">
+        <div class="text-xs uppercase tracking-wider text-emerald-400 font-bold mb-1">Mode 2</div>
+        <div class="text-lg font-bold group-hover:text-emerald-300">Guess The Company Name</div>
+        <div class="text-xs text-slate-400 mt-1">Given "MSFT" → Select "Microsoft"</div>
+      </button>
+    </div>
+
+    <!-- Screen 2: Active Gameplay Screen -->
+    <div id="game-screen" class="hidden flex-col justify-between h-full space-y-6">
+      <!-- Timer Bar Container -->
+      <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-700">
+        <div id="timer-bar" class="bg-emerald-500 h-full w-full"></div>
+      </div>
+
+      <!-- Prompt Box -->
+      <div id="prompt-card" class="bg-slate-800/80 border border-slate-700 rounded-2xl p-6 text-center shadow-xl">
+        <div id="prompt-label" class="text-xs uppercase font-bold tracking-widest text-slate-400 mb-2">Target Stock</div>
+        <div id="prompt-title" class="text-3xl font-extrabold text-white">---</div>
+      </div>
+
+      <!-- Feedback Area (Appreciation Word + Stock Info) -->
+      <div id="feedback-area" class="hidden min-h-[120px] bg-emerald-950/40 border border-emerald-500/40 rounded-2xl p-4 text-center flex-col items-center justify-center space-y-2 animate-bounce-once">
+        <div id="praise-text" class="text-emerald-400 font-black tracking-widest text-xl uppercase">BRILLIANT!</div>
+        <div class="flex items-center space-x-3 bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-800">
+          <img id="company-logo" src="" alt="logo" class="w-8 h-8 rounded-full bg-white p-1 object-contain" />
+          <div class="text-left text-xs">
+            <div id="company-full-name" class="font-bold text-white">---</div>
+            <div class="text-slate-400">
+              Price: <span id="stock-price" class="text-white font-semibold">$0.00</span> | 
+              YTD: <span id="stock-ytd" class="text-emerald-400 font-semibold">+0.0%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Option Buttons -->
+      <div id="options-container" class="space-y-3">
+        <!-- Buttons generated dynamically in JS -->
+      </div>
+    </div>
+
+    <!-- Screen 3: Game Over Screen -->
+    <div id="game-over-screen" class="hidden text-center space-y-6">
+      <div class="space-y-2">
+        <div class="text-4xl font-black text-red-500 tracking-wider">TRY AGAIN</div>
+        <p class="text-slate-400 text-sm" id="game-over-reason">Time ran out or incorrect choice!</p>
+      </div>
+
+      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+        <div class="text-xs text-slate-400 uppercase tracking-widest mb-1">Final Streak</div>
+        <div id="final-streak" class="text-5xl font-black text-emerald-400">0</div>
+      </div>
+
+      <div class="space-y-3">
+        <button onclick="restartGame()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-4 rounded-xl shadow-lg transition text-lg">
+          Play Again 🔄
+        </button>
+        <button onclick="shareScore()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold py-3 rounded-xl transition text-sm flex items-center justify-center space-x-2">
+          <span>Share Score</span>
+          <span>📲</span>
+        </button>
+        <button onclick="returnToMenu()" class="w-full bg-transparent hover:text-slate-300 text-slate-500 text-sm font-semibold py-2">
+          Main Menu
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom Ad Banner Container -->
+  <footer class="p-4 border-t border-slate-800 flex justify-center">
+    <div id="ad-banner" class="w-[320px] h-[50px] bg-slate-800 border border-dashed border-slate-700 rounded flex items-center justify-center text-xs text-slate-500 uppercase tracking-widest">
+      Ad Banner Spot (320x50)
+    </div>
+  </footer>
+
+  <!-- Inline Game Logic -->
+  <script>
+    // Embedded S&P 500 JSON Database with Difficulty Tiers
+    const sp500Data = [
+      { symbol: "AAPL", name: "Apple Inc.", tier: 1, price: 224.23, ytd: "+16.2%", domain: "apple.com" },
+      { symbol: "MSFT", name: "Microsoft Corporation", tier: 1, price: 415.50, ytd: "+11.8%", domain: "microsoft.com" },
+      { symbol: "GOOGL", name: "Alphabet Inc.", tier: 1, price: 165.30, ytd: "+18.4%", domain: "google.com" },
+      { symbol: "AMZN", name: "Amazon.com Inc.", tier: 1, price: 178.25, ytd: "+17.3%", domain: "amazon.com" },
+      { symbol: "NVDA", name: "NVIDIA Corporation", tier: 1, price: 128.50, ytd: "+158.4%", domain: "nvidia.com" },
+      { symbol: "META", name: "Meta Platforms Inc.", tier: 1, price: 520.10, ytd: "+47.2%", domain: "meta.com" },
+      { symbol: "TSLA", name: "Tesla Inc.", tier: 1, price: 210.40, ytd: "-15.2%", domain: "tesla.com" },
+      { symbol: "MA", name: "Mastercard Inc.", tier: 2, price: 475.20, ytd: "+11.1%", domain: "mastercard.com" },
+      { symbol: "MU", name: "Micron Technology", tier: 2, price: 95.80, ytd: "+12.3%", domain: "micron.com" },
+      { symbol: "MAS", name: "Masco Corporation", tier: 3, price: 72.10, ytd: "+4.2%", domain: "masco.com" },
+      { symbol: "MCD", name: "McDonald's Corp", tier: 2, price: 288.60, ytd: "-2.1%", domain: "mcdonalds.com" },
+      { symbol: "MMM", name: "3M Company", tier: 3, price: 128.40, ytd: "+19.5%", domain: "3m.com" },
+      { symbol: "MAR", name: "Marriott International", tier: 3, price: 235.10, ytd: "+4.8%", domain: "marriott.com" }
+    ];
+
+    const praiseWords = ["BRILLIANT!", "FANTASTIC!", "SMART!", "SPOT ON!", "GENIUS!"];
+
+    // State Variables
+    let currentMode = null;
+    let currentStreak = 0;
+    let bestStreak = parseInt(localStorage.getItem("stockpick_best_streak")) || 0;
+    let timerInterval = null;
+    let timeLeft = 5.0;
+    let currentStock = null;
+    let isTransitioning = false;
+
+    // Elements
+    const modeScreen = document.getElementById("mode-select-screen");
+    const gameScreen = document.getElementById("game-screen");
+    const gameOverScreen = document.getElementById("game-over-screen");
+    const timerBar = document.getElementById("timer-bar");
+    const optionsContainer = document.getElementById("options-container");
+    const feedbackArea = document.getElementById("feedback-area");
+    const currentStreakEl = document.getElementById("current-streak");
+    const bestStreakEl = document.getElementById("best-streak");
+
+    // Initialize Best Streak UI
+    bestStreakEl.textContent = bestStreak;
+
+    function startGame(mode) {
+      currentMode = mode;
+      currentStreak = 0;
+      updateStreakUI();
+      
+      modeScreen.classList.add("hidden");
+      gameOverScreen.classList.add("hidden");
+      gameScreen.classList.remove("hidden");
+      gameScreen.classList.add("flex");
+
+      nextRound();
+    }
+
+    function nextRound() {
+      isTransitioning = false;
+      feedbackArea.classList.add("hidden");
+      feedbackArea.classList.remove("flex");
+
+      // 1. Pick Stock based on difficulty curve
+      let maxTier = currentStreak < 3 ? 1 : currentStreak < 7 ? 2 : 3;
+      let eligibleStocks = sp500Data.filter(s => s.tier <= maxTier);
+      currentStock = eligibleStocks[Math.floor(Math.random() * eligibleStocks.length)];
+
+      // 2. Set Up Prompt
+      document.getElementById("prompt-title").textContent = 
+        currentMode === 'GUESS_SYMBOL' ? currentStock.name : currentStock.symbol;
+
+      // 3. Generate Distractors with matching starting letter
+      const distractorPool = sp500Data.filter(s => {
+        if (s.symbol === currentStock.symbol) return false;
+        const targetLetter = currentMode === 'GUESS_SYMBOL' ? currentStock.symbol[0] : currentStock.name[0];
+        const itemLetter = currentMode === 'GUESS_SYMBOL' ? s.symbol[0] : s.name[0];
+        return itemLetter === targetLetter;
+      });
+
+      // Fallback if not enough matching-letter options available
+      let selectedDistractors = [...distractorPool].sort(() => 0.5 - Math.random()).slice(0, 2);
+      if (selectedDistractors.length < 2) {
+        let fallback = sp500Data.filter(s => s.symbol !== currentStock.symbol && !selectedDistractors.includes(s));
+        while (selectedDistractors.length < 2) {
+          let randomItem = fallback[Math.floor(Math.random() * fallback.length)];
+          if(!selectedDistractors.includes(randomItem)) selectedDistractors.push(randomItem);
+        }
+      }
+
+      // 4. Combine and Shuffle Options
+      let choices = [currentStock, ...selectedDistractors].sort(() => 0.5 - Math.random());
+
+      // 5. Render Buttons
+      optionsContainer.innerHTML = "";
+      choices.forEach(choice => {
+        const btn = document.createElement("button");
+        btn.className = "w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 font-bold p-4 rounded-xl text-center transition duration-150 text-white active:scale-[0.98]";
+        btn.textContent = currentMode === 'GUESS_SYMBOL' ? choice.symbol : choice.name;
+        btn.onclick = () => handleAnswer(choice);
+        optionsContainer.appendChild(btn);
+      });
+
+      // 6. Start Timer
+      startTimer();
+    }
+
+    function startTimer() {
+      clearInterval(timerInterval);
+      timeLeft = 5.0;
+      timerBar.style.width = "100%";
+      timerBar.className = "bg-emerald-500 h-full w-full";
+
+      const startTime = Date.now();
+      timerInterval = setInterval(() => {
+        let elapsed = (Date.now() - startTime) / 1000;
+        timeLeft = Math.max(0, 5.0 - elapsed);
+        let pct = (timeLeft / 5.0) * 100;
+        
+        timerBar.style.width = pct + "%";
+
+        if (pct < 40) {
+          timerBar.className = "bg-red-500 h-full w-full";
+        } else if (pct < 70) {
+          timerBar.className = "bg-yellow-500 h-full w-full";
+        }
+
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          endGame("Time expired!");
+        }
+      }, 50);
+    }
+
+    function handleAnswer(selectedChoice) {
+      if (isTransitioning) return;
+      clearInterval(timerInterval);
+
+      if (selectedChoice.symbol === currentStock.symbol) {
+        // Correct Answer
+        isTransitioning = true;
+        currentStreak++;
+        if (currentStreak > bestStreak) {
+          bestStreak = currentStreak;
+          localStorage.setItem("stockpick_best_streak", bestStreak);
+        }
+        updateStreakUI();
+
+        // Show Post-Answer Info & Praise
+        document.getElementById("praise-text").textContent = 
+          praiseWords[Math.floor(Math.random() * praiseWords.length)];
+        document.getElementById("company-full-name").textContent = `${currentStock.name} (${currentStock.symbol})`;
+        document.getElementById("stock-price").textContent = `$${currentStock.price.toFixed(2)}`;
+        document.getElementById("stock-ytd").textContent = currentStock.ytd;
+        document.getElementById("company-logo").src = `https://logo.clearbit.com/${currentStock.domain}`;
+
+        feedbackArea.classList.remove("hidden");
+        feedbackArea.classList.add("flex");
+
+        setTimeout(() => {
+          nextRound();
+        }, 1500);
+
+      } else {
+        // Wrong Answer
+        endGame(`Incorrect! You picked ${currentMode === 'GUESS_SYMBOL' ? selectedChoice.symbol : selectedChoice.name}`);
+      }
+    }
+
+    function endGame(reason) {
+      clearInterval(timerInterval);
+      gameScreen.classList.add("hidden");
+      gameScreen.classList.remove("flex");
+      gameOverScreen.classList.remove("hidden");
+
+      document.getElementById("game-over-reason").textContent = reason;
+      document.getElementById("final-streak").textContent = currentStreak;
+    }
+
+    function restartGame() {
+      startGame(currentMode);
+    }
+
+    function returnToMenu() {
+      gameOverScreen.classList.add("hidden");
+      gameScreen.classList.add("hidden");
+      gameScreen.classList.remove("flex");
+      modeScreen.classList.remove("hidden");
+    }
+
+    function updateStreakUI() {
+      currentStreakEl.textContent = currentStreak;
+      bestStreakEl.textContent = bestStreak;
+    }
+
+    function shareScore() {
+      const shareText = `📈 StockPickGame: I scored a streak of ${currentStreak} on ${currentMode === 'GUESS_SYMBOL' ? 'Guess Symbol' : 'Guess Company'}! Can you beat me? https://www.stockpickgame.com`;
+      
+      if (navigator.share) {
+        navigator.share({
+          title: 'StockPickGame Score',
+          text: shareText,
+        }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(shareText);
+        alert("Score copied to clipboard! Paste it into WhatsApp, Instagram, or TikTok.");
+      }
+    }
+  </script>
+</body>
+</html>
